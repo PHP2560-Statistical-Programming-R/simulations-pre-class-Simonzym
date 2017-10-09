@@ -1,6 +1,6 @@
 ---
 title: "Simulations Pre-Class Project"
-date: "Due March 13, 2017 at 5:00pm"
+date: "2017/10/8"
 output:
   html_document
 
@@ -31,14 +31,125 @@ With this project we will simulate a famoues probability problem. This will not 
 
  1. **Gambler's Ruin**: Suppose you have a bankroll of $1000 and make bets of $100 on a fair game. By simulating the outcome directly for at most 5000 iterations of the game (or hands), estimate:
     a. the probability that you have "busted" (lost all your money) by the time you have placed your one hundredth bet. 
+```{r}
+simulate = function(p, time, reach){
+record = matrix(nrow = 5000, ncol = 2)
+colnames(record) = c("time to stop","bank_roll")
+for(i in 1:time){
+  bank_roll = 1000
+  bet = 100
+  j = 0
+  while(bank_roll>0 & bank_roll<reach & j<5000){
+    random = rbinom(1,1,p)
+    if(random == 1){random = 1}
+    else {random = -1}
+    bank_roll = bank_roll + bet*random
+    j = j+1
+  }
+  record[i, 1] = j
+  record[i, 2] = bank_roll
+}
+return(record)
+}
+
+prob_bust = function(x, n){
+  bust = x[x[,2]==0]
+  return(length(bust[bust<n])/length(x))
+}
+
+prob_bust(simulate(0.6, 5000, 2000), 100)
+
+```
+
     b. the probability that you have busted by the time you have placed your five hundredth bet by simulating the outcome directly. 
+```{r}
+prob_bust(simulate(0.48, 5000, 4000), 500)
+
+```
+
     c. the mean time you go bust, given that you go bust within the first 5000 hands.
+```{r}
+result = simulate(0.48, 5000, 4000)
+go_bust = result[,1][result[,2]==0]
+go_bust_5000 = go_bust[go_bust<=5000]
+mean(go_bust_5000)
+```
+
     d. the mean and variance of your bankroll after 100 hands (including busts).
+```{r}
+bank_roll_100 = result[,2][result[,1]>100]
+mean(bank_roll_100)
+var(bank_roll_100)
+```
+
+
     e. the mean and variance of your bankroll after 500 hands (including busts).
+```{r}
+bank_roll_500 = result[,2][result[,1]>500]
+mean(bank_roll_500)
+var(bank_roll_500)
+```
+
  
 Note: you *must* stop playing if your player has gone bust. How will you handle this in the `for` loop?
 
 2. **Markov Chains**. Suppose you have a game where the probability of winning on your first hand is 48%; each time you win, that probability goes up by one percentage point for the next game (to a maximum of 100%, where it must stay), and each time you lose, it goes back down to 48%. Assume you cannot go bust and that the size of your wager is a constant $100.
+
     a. Is this a fair game? Simulate one hundred thousand sequential hands to determine the size of your return. Then repeat this simulation 99 more times to get a range of values to calculate the expectation.
+```{r}
+next_prob = function(prob, win, default_prob, change){
+  if(win==0){return(default_prob)}
+  else {return(min(1, prob+change))}
+}
+
+simulate_markov = function(start_prob, change){
+  bank_roll = 1000
+  wager = 100
+  prob = start_prob
+  for(i in 1:5000){
+  if(bank_roll==0){return(0)}
+  win = rbinom(1,1,prob)
+  if(win==1){index = 1}
+  else {index = -1}
+  bank_roll = bank_roll + index*wager
+  prob = next_prob(prob, win, start_prob, change)
+  }
+  return(bank_roll)
+}
+
+expected_value = function(prob, change){
+markov = vector(length = 100)
+for(i in 1:5000){
+  markov[i] = simulate_markov(prob, change)
+}
+return(mean(markov))
+}
+
+expected_value(0.48, change = 0.01)
+
+```
+
     b. Repeat this process but change the starting probability to a new value within 2% either way. Get the expected return after 100 repetitions. Keep exploring until you have a return value that is as fair as you can make it. Can you do this automatically?
+```{r}
+expected_value(0.5, 0.1)
+get_prob = function(left = 0.48, right = 0.5, fair){
+  mid = (left+right)/2
+  expect_mid = expected_value(mid)
+  while(abs(expected_value(mid)-1000)>fair){
+    if(expected_value(left)*expected_value(mid)>0)
+    {left = mid}
+    else{right =mid}
+    mid = (left+right)/2
+  }
+  return(mid)
+  }
+get_prob(fair = 100) 
+  
+
+```
+
     c. Repeat again, keeping the initial probability at 48%, but this time change the probability increment to a value different from 1%. Get the expected return after 100 repetitions. Keep changing this value until you have a return value that is as fair as you can make it. 
+```{r}
+expected_value(0.48, 0.015)
+```
+
