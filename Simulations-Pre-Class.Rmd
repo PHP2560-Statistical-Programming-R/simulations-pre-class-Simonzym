@@ -105,10 +105,8 @@ simulate_markov = function(start_prob, change){
   wager = 100
   prob = start_prob
   for(i in 1:5000){
-  win = rbinom(1,1,prob)
-  if(win==1){index = 1}
-  else {index = -1}
-  bank_roll = bank_roll + index*wager
+  win = 2*rbinom(1,1,prob)-1
+  bank_roll = bank_roll + win*wager
   prob = next_prob(prob, win, start_prob, change)
   }
   return(bank_roll)
