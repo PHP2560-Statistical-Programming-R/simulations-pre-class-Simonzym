@@ -40,10 +40,7 @@ for(i in 1:rep){
   bet = 100
   j = 0
   while(bank_roll>0 & bank_roll<reach & j<5000){#stop when a person loses all his money or reach his desire or                                                 play 5000 hands.
-    random = rbinom(1,1,p)
-    if(random == 1){random = 1}
-    else {random = -1}
-    bank_roll = bank_roll + bet*random
+   bank_roll = bank_roll+(2*rbinom(1,1,p)-1)*bet
     j = j+1
   }
   record[i, 1] = j
@@ -96,7 +93,7 @@ Note: you *must* stop playing if your player has gone bust. How will you handle 
     a. Is this a fair game? Simulate one hundred thousand sequential hands to determine the size of your return. Then repeat this simulation 99 more times to get a range of values to calculate the expectation.
 ```{r}
 next_prob = function(prob, win, default_prob, change){
-  if(win==0){return(default_prob)}
+  if(win==-1){return(default_prob)}
   else {return(min(1, prob+change))}
 }
 
@@ -104,7 +101,7 @@ simulate_markov = function(start_prob, change){
   bank_roll = 0
   wager = 100
   prob = start_prob
-  for(i in 1:5000){
+  for(i in 1:100000){
   win = 2*rbinom(1,1,prob)-1
   bank_roll = bank_roll + win*wager
   prob = next_prob(prob, win, start_prob, change)
@@ -112,40 +109,52 @@ simulate_markov = function(start_prob, change){
   return(bank_roll)
 }
 
-expected_value = function(prob, change){
-markov = vector(length = 100)
-for(i in 1:100){
-  markov[i] = simulate_markov(prob, change)
-}
-return(mean(markov))
+
+expect = function(start_prob, change){
+  rep = replicate(100, simulate_markov(start_prob, change))
+  return(mean(rep))
 }
 
-expected_value(0.48, change = 0.01)
+expect(0.48, 0.01)
+
 
 ```
 
     b. Repeat this process but change the starting probability to a new value within 2% either way. Get the expected return after 100 repetitions. Keep exploring until you have a return value that is as fair as you can make it. Can you do this automatically?
 ```{r}
-expected_value(0.5, 0.1)
+expect(0.5, 0.01)
 get_prob = function(left, right, fair, change){
   mid = (left+right)/2
-  expect_mid = expected_value(mid, change)
+  expect_mid = expect(mid, change)
   while(abs(expect_mid)>fair){
-    if(expected_value(left, change)*expect_mid>0)
+    if(expect(left, change)*expect_mid>0)
     {left = mid}
     else{right =mid}
     mid = (left+right)/2
-    expect_mid = expected_value(mid, change)
+    expect_mid = expect(mid, change)
   }
   return(mid)
   }
-get_prob(left = 0.48, right = 0.5, fair = 100, change = 0.01) 
+get_prob(left = 0.48, right = 0.5, fair = 2000, change = 0.01) 
   
 
 ```
 
     c. Repeat again, keeping the initial probability at 48%, but this time change the probability increment to a value different from 1%. Get the expected return after 100 repetitions. Keep changing this value until you have a return value that is as fair as you can make it. 
 ```{r}
-expected_value(0.48, 0.015)
+get_change = function(left, right, fair, prob){
+  mid = (left+right)/2
+  expect_mid = expect(prob, mid)
+  while(abs(expect_mid)>fair){
+    if(expect(prob, left)*expect_mid>0)
+    {left = mid}
+    else{right =mid}
+    mid = (left+right)/2
+    expect_mid = expect(prob, mid)
+  }
+  return(mid)
+}
+expect(0.48, 0.01)
+get_change(0.01, 0.02, fair = 20000, prob = 0.48)
 ```
 
